@@ -1,6 +1,6 @@
-const nodeHtmlToImage = require('node-html-to-image');
+import nodeHtmlToImage from 'node-html-to-image';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Gunakan POST" });
   }
@@ -65,4 +65,4 @@ module.exports = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "Gagal membuat gambar", detail: err.message });
   }
-};
+}
