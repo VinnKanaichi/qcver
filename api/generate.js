@@ -1,29 +1,48 @@
-import nodeHtmlToImage from 'node-html-to-image';
+const { createCanvas, loadImage } = require("canvas");
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+module.exports = async (req, res) => {
+  if (req.method !== "POST") {
+    return res.status(405).send("Method Not Allowed");
   }
-  const { text = '', name = 'User', avatar = '' } = req.body;
 
   try {
-    const image = await nodeHtmlToImage({
-      html: `
-      <html>
-        <body style="width:512px;height:768px;margin:0;padding:0;background:#ffffff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;">
-          ${ avatar ? `<img src="${avatar}" style="width:96px;height:96px;border-radius:50%;margin-bottom:20px;" />` : '' }
-          <div style="font-size:22px;font-weight:bold;margin-bottom:16px;">${name}</div>
-          <div style="font-size:18px;text-align:center;padding: 0 20px;white-space:pre-wrap;">${text}</div>
-        </body>
-      </html>`,
-      type: 'png',
-      encoding: 'base64',
-      quality: 100
-    });
+    const { text, name, avatar } = req.body;
 
-    return res.status(200).json({ result: image });
-  } catch (err) {
-    console.error('Error generate quote image:', err);
-    return res.status(500).json({ error: 'Internal error', detail: err.message });
+    const canvas = createCanvas(512, 768);
+    const ctx = canvas.getContext("2d");
+
+    // Background putih
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Gambar Avatar
+    try {
+      const img = await loadImage(avatar);
+      ctx.beginPath();
+      ctx.arc(64, 64, 48, 0, Math.PI * 2, true);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(img, 16, 16, 96, 96);
+      // HAPUS ctx.restore(); karena tidak ada ctx.save()
+    } catch (err) {
+      console.log("Avatar load error:", err.message);
+    }
+
+    // Nama
+    ctx.fillStyle = "#000000";
+    ctx.font = "bold 22px Arial";
+    ctx.fillText(name || "Pengguna", 128, 60);
+
+    // Teks
+    ctx.font = "18px sans-serif";
+    ctx.fillText(text || "", 32, 160, 448);
+
+    const buffer = canvas.toBuffer("image/png");
+    const base64Image = buffer.toString("base64");
+
+    res.status(200).json({ result: base64Image });
+  } catch (e) {
+    console.error("Internal Server Error:", e);
+    res.status(500).send("Internal Server Error");
   }
-}
+};
