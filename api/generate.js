@@ -1,68 +1,48 @@
-import nodeHtmlToImage from 'node-html-to-image';
+import { createCanvas, loadImage } from "canvas";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Gunakan POST" });
-  }
-
-  const { text = "", name = "Pengguna", avatar } = req.body;
-
-  const htmlTemplate = `
-    <html>
-      <head>
-        <style>
-          body {
-            width: 512px;
-            height: 768px;
-            background: white;
-            font-family: sans-serif;
-            padding: 20px;
-            box-sizing: border-box;
-          }
-          .wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-          }
-          .avatar {
-            width: 96px;
-            height: 96px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 16px;
-          }
-          .name {
-            font-weight: bold;
-            font-size: 20px;
-            margin-bottom: 12px;
-          }
-          .text {
-            font-size: 18px;
-            text-align: center;
-            white-space: pre-wrap;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="wrapper">
-          ${avatar ? `<img src="${avatar}" class="avatar" />` : ''}
-          <div class="name">${name}</div>
-          <div class="text">${text}</div>
-        </div>
-      </body>
-    </html>
-  `;
-
   try {
-    const image = await nodeHtmlToImage({
-      html: htmlTemplate,
-      quality: 100,
-      type: 'png',
-      encoding: 'base64'
-    });
+    const { text = "", name = "Pengguna", avatar } = req.body;
 
-    res.json({ result: image });
+    const canvas = createCanvas(512, 768);
+    const ctx = canvas.getContext("2d");
+
+    // Background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Avatar
+    if (avatar) {
+      try {
+        const img = await loadImage(avatar);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(64, 64, 48, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(img, 16, 16, 96, 96);
+        ctx.restore();
+      } catch (e) {
+        console.log("⚠️ Avatar gagal dimuat:", e.message);
+      }
+    }
+
+    // Nama
+    ctx.fillStyle = "#000";
+    ctx.font = "bold 22px Arial";
+    ctx.fillText(name, 130, 60);
+
+    // Teks
+    ctx.font = "18px sans-serif";
+    ctx.fillText(text, 32, 160, 448);
+
+    // Buffer ke Base64
+    const buffer = canvas.toBuffer("image/png");
+    const base64Image = buffer.toString("base64");
+
+    res.status(200).json({ result: base64Image });
   } catch (err) {
-    res.status(500).json({ error: "Gagal membuat gambar", detail: err.message });
+    console.error("❌ Error di API:", err.message);
+    res.status(500).json({ error: "Internal error", detail: err.message });
   }
 }
