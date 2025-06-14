@@ -8,14 +8,17 @@ module.exports = async (req, res) => {
   try {
     const { text, name, avatar } = req.body;
 
+    if (!text || !name || !avatar) {
+      console.log("❌ Missing required field(s):", { text, name, avatar });
+      return res.status(400).json({ error: "Missing text, name, or avatar" });
+    }
+
     const canvas = createCanvas(512, 768);
     const ctx = canvas.getContext("2d");
 
-    // Background putih
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Gambar Avatar
     try {
       const img = await loadImage(avatar);
       ctx.beginPath();
@@ -23,26 +26,23 @@ module.exports = async (req, res) => {
       ctx.closePath();
       ctx.clip();
       ctx.drawImage(img, 16, 16, 96, 96);
-      // HAPUS ctx.restore(); karena tidak ada ctx.save()
     } catch (err) {
-      console.log("Avatar load error:", err.message);
+      console.error("❌ Error loading avatar:", err.message);
     }
 
-    // Nama
     ctx.fillStyle = "#000000";
     ctx.font = "bold 22px Arial";
-    ctx.fillText(name || "Pengguna", 128, 60);
+    ctx.fillText(name, 128, 60);
 
-    // Teks
     ctx.font = "18px sans-serif";
-    ctx.fillText(text || "", 32, 160, 448);
+    ctx.fillText(text, 32, 160, 448);
 
     const buffer = canvas.toBuffer("image/png");
     const base64Image = buffer.toString("base64");
 
     res.status(200).json({ result: base64Image });
   } catch (e) {
-    console.error("Internal Server Error:", e);
-    res.status(500).send("Internal Server Error");
+    console.error("❌ Internal error:", e);
+    res.status(500).json({ error: "Internal Server Error", details: e.message });
   }
 };
