@@ -1,0 +1,7 @@
+{
+  "name": "quote-api",
+  "version": "1.0.0",
+  "dependencies": {
+    "node-html-to-image": "^3.2.0"
+  }
+}
